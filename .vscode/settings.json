@@ -23,5 +23,13 @@
   "files.associations": {
     "pages.json": "jsonc", // pages.json 可以写注释
     "manifest.json": "jsonc" // manifest.json 可以写注释
+  },
+  "cSpell.customDictionaries": {
+    "custom-dictionary-workspace": {
+      "name": "custom-dictionary-workspace",
+      "path": "${workspaceFolder:erabbit-uni-app-typescript}/.cspell/custom-dictionary-workspace.txt",
+      "addWords": true,
+      "scope": "workspace"
+    }
   }
 }

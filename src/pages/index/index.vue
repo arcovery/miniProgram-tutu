@@ -1,62 +1,126 @@
 <script setup lang="ts">
-import { toRef } from 'vue'
+import { ref, toRef } from 'vue'
 import useAppStore from '@/store/index'
-
 import carousel from '@/components/carousel/index.vue'
 import guess from '@/components/guess/index.vue'
 import entries from './components/entries/index.vue'
+import {
+  resultItem,
+  homeCategoryMutliItm,
+  homeHotMutliItem,
+  homeNewItem,
+  guessLike,
+} from '@/@types/home'
 
-// pinia
+import {
+  homeBannerAPI,
+  homeCategoryMutliAPI,
+  homeGoodsGuessLikeAPI,
+  homeHotMutliAPI,
+  homeNewAPI,
+} from '@/api/home'
+import { onLoad } from '@dcloudio/uni-app'
+import { guessLikeItem } from '@/@types/home'
+
+/** pinia */
 const appStore = useAppStore()
 const safeArea = toRef(appStore, 'safeArea')
 
-// 初始数据
+/** 初始数据*/
 let hasMore = $ref(true)
 
-const bannerData = [
-  {
-    id: '227415',
-    type: '1',
-    imgUrl:
-      'https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/slider_1.jpg',
-  },
-  {
-    id: '326416',
-    type: '4',
-    imgUrl:
-      'https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/slider_2.jpg',
-  },
-  {
-    id: '163424',
-    type: '2',
-    imgUrl:
-      'https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/slider_3.jpg',
-  },
-  {
-    id: '223413',
-    type: '1',
-    imgUrl:
-      'https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/slider_4.jpg',
-  },
-  {
-    id: '423426',
-    type: '3',
-    imgUrl:
-      'https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/slider_5.jpg',
-  },
-]
+/**  获取数据*/
+const getData = async () => {
+  bannerData.value = await homeBannerAPI()
+  homeCategory.value = await homeCategoryMutliAPI()
+  recommend.value = await homeHotMutliAPI()
+  freshList.value = await homeNewAPI()
+  getGuessLikeList()
+}
+/** 获取猜你喜欢列表 */
+const getGuessLikeList = async () => {
+  if (finish.value) return
+  loading.value = true
+  const res = await homeGoodsGuessLikeAPI({
+    page: page.value,
+    pageSize: pageSize.value,
+  })
+  guessLikeList.value.push(...res.items)
+  page.value++
+  total.value = res.counts
+  loading.value = false
+  if (total.value <= guessLikeList.value.length) finish.value = true
+}
+/** banner广告图列表*/
+const bannerData = ref<resultItem[]>([])
 
-// 跳转到搜索页面
+/**  前台分类列表 */
+const homeCategory = ref<homeCategoryMutliItm[]>([])
+
+/** 热门推荐列表 */
+const recommend = ref<homeHotMutliItem[]>([])
+
+/** 新鲜好物列表 */
+const freshList = ref<homeNewItem[]>([])
+
+/** 猜你喜欢列表 */
+const guessLikeList = ref<guessLikeItem[]>([])
+
+/** 猜你喜欢当前页 */
+const page = ref<number>(1)
+/** 猜你喜欢当前页大小 */
+const pageSize = ref<number>(10)
+/** 猜你喜欢总页数 */
+const total = ref<number>(0)
+/** 猜你喜欢是否加载完成 */
+const finish = ref<boolean>(false)
+/** 加载猜你喜欢列表 */
+const loading = ref<boolean>(false)
+
+/** 微信小程序页面载入完成入口 */
+onLoad(() => {
+  getData()
+})
+
+const refresherrefresh = async () => {
+  triggered.value = true
+  // /  重置数据源
+  bannerData.value.length = 0
+  homeCategory.value.length = 0
+  recommend.value.length = 0
+  freshList.value.length = 0
+  guessLikeList.value.length = 0
+  page.value = 1
+  total.value = 0
+  try {
+    const res = await Promise.all([
+      homeBannerAPI(),
+      homeCategoryMutliAPI(),
+      homeHotMutliAPI(),
+      homeNewAPI(),
+      getGuessLikeList(),
+    ])
+    bannerData.value = res[0]
+    homeCategory.value = res[1]
+    recommend.value = res[2]
+    freshList.value = res[3]
+  } finally {
+    triggered.value = false
+  }
+}
+const triggered = ref<boolean>(false)
+
+/** 跳转到搜索页面 */
 const goSearch = () => {
   uni.navigateTo({ url: '/pages/search/index' })
 }
 
-// 扫描二维码
+/** 扫描二维码 */
 const scanCode = () => {
   uni.scanCode({ scanType: ['qrCode'] })
 }
 
-// 消息提示
+/** 消息提示 */
 const nextVersion = () => {
   uni.showToast({ title: '等待下一个版本哦~', icon: 'none' })
 }
@@ -87,74 +151,30 @@ const nextVersion = () => {
     enhanced
     refresher-background="#f7f7f8"
     :show-scrollbar="false"
+    @scrolltolower="getGuessLikeList"
+    @refresherrefresh="refresherrefresh"
+    :refresher-triggered="triggered"
   >
     <!-- 焦点图 -->
     <carousel style="height: 280rpx" :source="bannerData"></carousel>
     <!-- 前台类目 -->
-    <entries :source="[]"></entries>
+    <entries :source="homeCategory"></entries>
     <!-- 推荐专区 -->
     <view class="panel recommend">
-      <view class="item">
-        <view class="title">特惠推荐<text>精选全攻略</text></view>
+      <view class="item" v-for="item in recommend" :key="item.id">
+        <view class="title"
+          >{{ item.title }}<text>{{ item.alt }}</text></view
+        >
         <navigator
           hover-class="none"
-          url="/pages/recommend/index?type=1"
+          :url="`/pages/recommend/index?type=${item.type}`"
           class="cards"
         >
           <image
+            v-for="(v, index) in item.pictures"
+            :key="index"
             mode="aspectFit"
-            src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/goods_small_1.jpg"
-          ></image>
-          <image
-            mode="aspectFit"
-            src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/goods_small_2.jpg"
-          ></image>
-        </navigator>
-      </view>
-      <view class="item">
-        <view class="title">爆款推荐<text>最受欢迎</text></view>
-        <navigator
-          hover-class="none"
-          url="/pages/recommend/index?type=2"
-          class="cards"
-        >
-          <image
-            mode="aspectFit"
-            src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/goods_small_3.jpg"
-          ></image>
-          <image
-            mode="aspectFit"
-            src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/goods_small_4.jpg"
-          ></image>
-        </navigator>
-      </view>
-      <view class="item">
-        <view class="title">一站买全 <text>精选优选</text></view>
-        <navigator
-          hover-class="none"
-          url="/pages/recommend/index?type=1"
-          class="cards"
-        >
-          <image
-            mode="aspectFit"
-            src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/goods_small_5.jpg"
-          ></image>
-          <image
-            mode="aspectFit"
-            src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/goods_small_6.jpg"
-          ></image>
-        </navigator>
-      </view>
-      <view class="item" @tap="nextVersion">
-        <view class="title"> 领券中心 <text>超值优惠券</text> </view>
-        <navigator hover-class="none" class="cards">
-          <image
-            mode="aspectFit"
-            src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/goods_small_7.jpg"
-          ></image>
-          <image
-            mode="aspectFit"
-            src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/goods_small_8.jpg"
+            :src="v"
           ></image>
         </navigator>
       </view>
@@ -171,37 +191,17 @@ const nextVersion = () => {
         >
       </view>
       <view class="cards">
-        <navigator hover-class="none" url="/pages/goods/index">
-          <image
-            mode="aspectFit"
-            src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/goods_small_9.jpg"
-          ></image>
-          <view class="name">香水小样</view>
-          <view class="price"> <text class="small">¥</text>299 </view>
-        </navigator>
-        <navigator hover-class="none" url="/pages/goods/index">
-          <image
-            mode="aspectFit"
-            src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/goods_small_10.jpg"
-          ></image>
-          <view class="name">红外体温仪</view>
-          <view class="price"> <text class="small">¥</text>266 </view>
-        </navigator>
-        <navigator hover-class="none" url="/pages/goods/index">
-          <image
-            mode="aspectFit"
-            src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/goods_small_11.jpg"
-          ></image>
-          <view class="name">美的电饭煲美的电饭煲</view>
-          <view class="price"> <text class="small">¥</text>199 </view>
-        </navigator>
-        <navigator hover-class="none" url="/pages/goods/index">
-          <image
-            mode="aspectFit"
-            src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/goods_small_12.jpg"
-          ></image>
-          <view class="name">过滤水壶</view>
-          <view class="price"> <text class="small">¥</text>99 </view>
+        <navigator
+          hover-class="none"
+          :url="`/pages/goods/index?id=${item.orderNum}`"
+          v-for="item in freshList"
+          :key="item.id"
+        >
+          <image mode="aspectFit" :src="item.picture"></image>
+          <view class="name">{{ item.desc }}</view>
+          <view class="price">
+            <text class="small">¥</text>{{ item.price }}
+          </view>
         </navigator>
       </view>
     </view>
@@ -280,8 +280,10 @@ const nextVersion = () => {
       </view>
     </view>
     <!-- 猜你喜欢 -->
-    <guess :source="[]"></guess>
-    <view class="loading" v-if="hasMore">正在加载...</view>
+    <guess :source="guessLikeList"></guess>
+    <view class="loading" v-if="!loading">{{
+      finish ? '已全部加载完成' : '正在加载...'
+    }}</view>
   </scroll-view>
 </template>
 

@@ -2,7 +2,7 @@
 import { toRef, getCurrentInstance } from 'vue'
 import { onReady } from '@dcloudio/uni-app'
 import useAppStore from '@/store'
-
+import UseCounter from '@/store/counter'
 const appStore = useAppStore()
 const safeArea = toRef(appStore, 'safeArea')
 
@@ -21,7 +21,11 @@ const pageInstance: any = getCurrentInstance()
 const changeTab = (index: number) => {
   tabIndex = index
 }
+const count = UseCounter()
 
+const tapClick = () => {
+  count.add()
+}
 onReady(() => {
   pageInstance.ctx.$scope.animate(
     '.profile',
@@ -62,7 +66,7 @@ onReady(() => {
 </script>
 
 <template>
-  <scroll-view scroll-y enhanced :show-scrollbar="false" id="scrollView">
+<scroll-view scroll-y enhanced :show-scrollbar="false" id="scrollView">
     <view class="viewport" :style="{ paddingTop: safeArea!.top + 40 + 'px' }">
       <!-- 个人资料 -->
       <view class="profile">
@@ -71,8 +75,8 @@ onReady(() => {
             class="avatar"
             src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/avatar_3.jpg"
           ></image>
-          <view class="meta">
-            <view class="nickname">未登录</view>
+          <view class="meta" @click="tapClick">
+            <view class="nickname">未登录{{ count.count }}</view>
             <view class="extra">
               <text class="tips">点击登录账号</text>
               <!-- <text class="update">更新头像昵称</text>

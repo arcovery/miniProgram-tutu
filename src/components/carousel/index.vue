@@ -1,10 +1,8 @@
 <script setup lang="ts">
-interface bannerType {
-  [index: number]: { id: string; type: string; imgUrl: string }
-}
+import { resultItem } from '@/@types/home'
 
 defineProps<{
-  source: bannerType
+  source: resultItem[]
 }>()
 
 let activeIndex = $ref(0)
@@ -19,7 +17,11 @@ const swiperChanged = (ev: WechatMiniprogram.SwiperChange) => {
   <view class="carousel">
     <swiper circular autoplay interval="3000" @change="swiperChanged">
       <swiper-item v-for="(item, index) in source" :key="index">
-        <navigator hover-class="none" class="navigator">
+        <navigator
+          hover-class="none"
+          class="navigator"
+          :url="'/pages' + item.hrefUrl"
+        >
           <image class="image" :src="item.imgUrl"></image>
         </navigator>
       </swiper-item>
