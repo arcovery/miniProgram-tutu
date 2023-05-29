@@ -1,38 +1,59 @@
 <script setup lang="ts">
+import { resultItem } from '@/@types/home'
+import { homeBannerAPI } from '@/api/home'
 import carousel from '@/components/carousel/index.vue'
+import { computed, nextTick, ref } from 'vue'
+import { Result } from '@/@types/category'
+import { categoryTopAPI } from '@/api/category'
+import { onLoad } from '@dcloudio/uni-app'
 
-const bannerData = [
-  {
-    id: '227415',
-    type: '1',
-    imgUrl:
-      'https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/slider_1.jpg',
-  },
-  {
-    id: '326416',
-    type: '4',
-    imgUrl:
-      'https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/slider_2.jpg',
-  },
-  {
-    id: '163424',
-    type: '2',
-    imgUrl:
-      'https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/slider_3.jpg',
-  },
-  {
-    id: '223413',
-    type: '1',
-    imgUrl:
-      'https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/slider_4.jpg',
-  },
-  {
-    id: '423426',
-    type: '3',
-    imgUrl:
-      'https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/slider_5.jpg',
-  },
-]
+/** 广告图列表 */
+const bannerData = ref<resultItem[]>([])
+/** 获取广告图列表函数 */
+const getBanner = async () => {
+  bannerData.value = await homeBannerAPI(2)
+}
+
+/** 分类列表 */
+const CategoryTopList = ref<Result[]>([])
+/** 获取分类列表函数 */
+const getCategoryTopList = async () => {
+  CategoryTopList.value = await categoryTopAPI()
+}
+
+/** 切换一级分类 */
+const activeIndex = ref<number>(0)
+const active = (index: number) => {
+  activeIndex.value = index
+  // 重置滚动位置
+  scrollTop.value = oldScrollTop.value
+
+  nextTick(() => {
+    scrollTop.value = 0
+  })
+}
+
+/** 滚动位置 */
+const scroll = (e: any) => {
+  oldScrollTop.value = e.detail.scrollTop
+}
+/** 滚动位置 */
+const scrollTop = ref<number>(0)
+/** 滚动位置(旧) */
+const oldScrollTop = ref<number>(0)
+
+/** 二级分类数据 */
+const subCateList = computed(() => {
+  return CategoryTopList.value[activeIndex.value]
+    ? CategoryTopList.value[activeIndex.value].children
+    : []
+})
+
+/** 小程序生命周期页面载入 */
+onLoad(() => {
+  getCategoryTopList()
+  getBanner()
+})
 </script>
 
 <template>
@@ -47,35 +68,37 @@ const bannerData = [
     <view class="categories">
       <!-- 主分类（一级类目） -->
       <scroll-view
+        v-if="CategoryTopList.length"
         class="primary"
         enhanced
         scroll-y="true"
         :show-scrollbar="false"
       >
-        <view class="item active">精选推荐</view>
-        <view class="item">女装</view>
-        <view class="item">男装</view>
-        <view class="item">箱包皮具</view>
-        <view class="item">手表配饰</view>
-        <view class="item">男鞋</view>
-        <view class="item">女鞋</view>
-        <view class="item">护肤彩妆</view>
-        <view class="item">个人护理</view>
-        <view class="item">母婴</view>
-        <view class="item">运动户外</view>
-        <view class="item">手机数码</view>
-        <view class="item">家用电器</view>
-        <view class="item">家居家纺</view>
-        <view class="item">生活超市</view>
+        <view
+          @click="active(index)"
+          :class="{ active: activeIndex === index }"
+          class="item"
+          v-for="(item, index) in CategoryTopList"
+          :key="item.id"
+          >{{ item.name }}</view
+        >
       </scroll-view>
       <!-- 次分类（二级类目） -->
-      <scroll-view class="secondary" enhanced scroll-y :show-scrollbar="false">
+      <scroll-view
+        :scroll-top="scrollTop"
+        class="secondary"
+        @scroll="scroll"
+        scroll-with-animation
+        enhanced
+        scroll-y
+        :show-scrollbar="false"
+      >
         <!-- 焦点图 -->
         <carousel class="banner" :source="bannerData"></carousel>
         <!-- 区块 -->
-        <view class="panel">
+        <view class="panel" v-for="item in subCateList" :key="item.id">
           <view class="title">
-            水果
+            {{ item.name }}
             <navigator
               class="more"
               hover-class="none"
@@ -84,149 +107,18 @@ const bannerData = [
             >
           </view>
           <view class="section">
-            <navigator hover-class="none" url="/pages/goods/index">
-              <image
-                src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/category_thumb_1.jpg"
-              ></image>
-              <view class="name ellipsis">石榴</view>
-              <view class="price">
-                <text class="symbol">¥</text>
-                <text class="number">899</text>
-                <text class="decimal">.00</text>
-              </view>
-            </navigator>
-            <navigator hover-class="none" url="/pages/goods/index">
-              <image
-                src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/category_thumb_2.jpg"
-              ></image>
-              <view class="name ellipsis">石榴</view>
-              <view class="price">
-                <text class="symbol">¥</text>
-                <text class="number">899</text>
-                <text class="decimal">.00</text>
-              </view>
-            </navigator>
-            <navigator hover-class="none" url="/pages/goods/index">
-              <image
-                src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/category_thumb_3.jpg"
-              ></image>
-              <view class="name ellipsis">石榴</view>
-              <view class="price">
-                <text class="symbol">¥</text>
-                <text class="number">899</text>
-                <text class="decimal">.00</text>
-              </view>
-            </navigator>
-            <navigator hover-class="none" url="/pages/goods/index">
-              <image
-                src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/category_thumb_4.jpg"
-              ></image>
-              <view class="name ellipsis">石榴</view>
-              <view class="price">
-                <text class="symbol">¥</text>
-                <text class="number">899</text>
-                <text class="decimal">.00</text>
-              </view>
-            </navigator>
-            <navigator hover-class="none" url="/pages/goods/index">
-              <image
-                src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/category_thumb_5.jpg"
-              ></image>
-              <view class="name ellipsis">石榴</view>
-              <view class="price">
-                <text class="symbol">¥</text>
-                <text class="number">899</text>
-                <text class="decimal">.00</text>
-              </view>
-            </navigator>
-            <navigator hover-class="none" url="/pages/goods/index">
-              <image
-                src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/category_thumb_6.jpg"
-              ></image>
-              <view class="name ellipsis">石榴</view>
-              <view class="price">
-                <text class="symbol">¥</text>
-                <text class="number">899</text>
-                <text class="decimal">.00</text>
-              </view>
-            </navigator>
-          </view>
-        </view>
-        <view class="panel">
-          <view class="title">
-            零食
             <navigator
-              class="more"
               hover-class="none"
-              url="/pages/goods/list/index"
-              >全部</navigator
+              url="/pages/goods/index"
+              v-for="i in item.goods"
+              :key="i.id"
             >
-          </view>
-          <view class="section">
-            <navigator hover-class="none" url="/pages/goods/index">
-              <image
-                src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/category_thumb_1.jpg"
-              ></image>
-              <view class="name ellipsis">石榴</view>
+              <image :src="i.picture"></image>
+              <view class="name ellipsis">{{ i.name }}</view>
               <view class="price">
                 <text class="symbol">¥</text>
-                <text class="number">899</text>
-                <text class="decimal">.00</text>
-              </view>
-            </navigator>
-            <navigator hover-class="none" url="/pages/goods/index">
-              <image
-                src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/category_thumb_2.jpg"
-              ></image>
-              <view class="name ellipsis">石榴</view>
-              <view class="price">
-                <text class="symbol">¥</text>
-                <text class="number">899</text>
-                <text class="decimal">.00</text>
-              </view>
-            </navigator>
-            <navigator hover-class="none" url="/pages/goods/index">
-              <image
-                src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/category_thumb_3.jpg"
-              ></image>
-              <view class="name ellipsis">石榴</view>
-              <view class="price">
-                <text class="symbol">¥</text>
-                <text class="number">899</text>
-                <text class="decimal">.00</text>
-              </view>
-            </navigator>
-            <navigator hover-class="none" url="/pages/goods/index">
-              <image
-                src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/category_thumb_4.jpg"
-              ></image>
-              <view class="name ellipsis">石榴</view>
-              <view class="price">
-                <text class="symbol">¥</text>
-                <text class="number">899</text>
-                <text class="decimal">.00</text>
-              </view>
-            </navigator>
-            <navigator hover-class="none" url="/pages/goods/index">
-              <image
-                src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/category_thumb_5.jpg"
-              ></image>
-              <view class="name ellipsis">石榴</view>
-              <view class="price">
-                <text class="symbol">¥</text>
-                <text class="number">899</text>
-                <text class="decimal">.00</text>
-              </view>
-            </navigator>
-            <navigator hover-class="none" url="/pages/goods/index">
-              <image
-                src="https://pcapi-xiaotuxian-front-devtest.itheima.net/miniapp/uploads/category_thumb_6.jpg"
-              ></image>
-              <view class="name ellipsis">石榴</view>
-              <view class="price">
-                <text class="symbol">¥</text>
-                <text class="number">899</text>
-                <text class="decimal">.00</text>
+                <text class="number">{{ i.price.slice(0, -2) }}</text>
+                <text class="decimal">{{ i.price.slice(-2) }}</text>
               </view>
             </navigator>
           </view>
